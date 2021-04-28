@@ -1,34 +1,40 @@
 import React, { useEffect } from 'react';
-import fetchCenters from '../utility/fetchCenters';
-import { formatDate, getDistrictName } from '../utility';
 
-function Monitor({ cancel, district, date, email, notifyUser }) {
+import fetchCenters from '../utility/fetchCenters';
+import { formatDate, getDistrictName, intervalList } from '../utility';
+
+function Monitor({
+  cancel,
+  district,
+  date,
+  pincode,
+  isPincode,
+  interval,
+  notifyUser
+}) {
+
   useEffect(() => {
-    if (district && date) {
+    if (date && ((isPincode && pincode) || (!isPincode && district))) {
+      const intItem = (intervalList().find(i => i.value === interval) || {});
+      const intervalInMilliSec = intItem.interval || 600000;
       const timer = setInterval(() => {
         (async () => {
-          const response = await fetchCenters(district, date);
-          if (response && response.centers && response.centers.length) {
-            await notifyUser();
-          }
+          const response = await fetchCenters(district, date, pincode, isPincode);
+          const { centers = [] } = response || {};
+          notifyUser(centers);
         })();
-       }, 600000); // running in 10 minutes interval
+       }, intervalInMilliSec);
 
       return () => clearInterval(timer);
     }
 
     return () => {};
-  }, [district, date]);
+  }, [district, date, pincode, isPincode, notifyUser, interval]);
 
   return (
     <div className="flex flex-col justify-center">
       <p className="text-center">We are watching...</p>
       <ul className="flex flex-col justify-center m-0 mt-4 space-y-3">
-        <li className="flex">
-          <span className="w-16 font-bold">Email</span>
-          <span className="w-4">:</span>
-          <span className="flex-grow">{email}</span>
-        </li>
         <li className="flex">
           <span className="w-16 font-bold">District</span>
           <span className="w-4">:</span>

@@ -1,5 +1,4 @@
 export default function pushNotification(subscription, email, district) {
-  console.log('pushNotification')
   return fetch('/api/notification', {
     method: 'POST',
     headers: {

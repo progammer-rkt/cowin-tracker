@@ -3,7 +3,6 @@ import { getDistrictName } from '../../utility';
 const webPush = require('web-push')
 
 export default (req, res) => {
-  console.log('here notification')
   if (req.method == 'POST') {
     const { subscription, email, district } = req.body;
 
@@ -17,7 +16,7 @@ export default (req, res) => {
 
     webPush
       .sendNotification(subscription, JSON.stringify({
-        title: 'Dear friend,',
+        title: `Vaccine Available In ${getDistrictName(district)}`,
         message: `You have vaccine availability at ${getDistrictName(district)}. Grab it soon!!!`
       }))
       .then(response => {

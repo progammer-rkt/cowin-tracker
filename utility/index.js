@@ -2,30 +2,6 @@ import moment from 'moment';
 
 import districtList from '../data/districtList.json';
 
-
-export function base64ToUint8Array(base64) {
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4)
-  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/')
-
-  const rawData = window.atob(b64)
-  const outputArray = new Uint8Array(rawData.length)
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i)
-  }
-  return outputArray
-}
-
-export function isValidEmail(email) {
-  const mailformat = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-
-  if ((email || '').match(mailformat)) {
-    return true;
-  }
-
-  return false;
-}
-
 export function formatDate(date) {
   return moment(date, 'YYYYY-MM-DD').format('DD-MM-YYYY')
 }
@@ -34,4 +10,39 @@ export function getDistrictName(districtId) {
   const district = (districtList.find(d => d.districtId == districtId) || {});
 
   return district.districtName || districtId;
+}
+
+export function createCentersId(newCenters) {
+  return (newCenters || []).map(c => c.center_id).join('__');
+}
+
+export function resultHoldsAnyKeyword(keywords, centers) {
+  const searchKeywordsArray = keywords.split(',').map(w => w.trim());
+  const searchDB = (centers || [])
+    .map(c => [
+        c.name.toLowerCase(),
+        c.block_name.toLowerCase(),
+        c.pincode.toString()
+      ].join(' ')
+    ).join(' ');
+
+  console.log({ searchKeywordsArray, searchDB })
+
+  return searchKeywordsArray.some(searchWord => {
+    if (searchDB.includes(searchWord)) {
+      return true;
+    }
+  });
+}
+
+export function intervalList() {
+  return [
+    { label: '5min', value: 5, interval: 300000 },
+    { label: '10min', value: 10, interval: 600000 },
+    { label: '15min', value: 15, interval: 900000 },
+    { label: '20min', value: 20, interval: 1200000 },
+    { label: '30min', value: 30, interval: 1800000 },
+    { label: '45min', value: 45, interval: 2700000 },
+    { label: '1hr', value: 100, interval: 3600000 },
+  ];
 }

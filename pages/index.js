@@ -3,23 +3,65 @@ import { useEffect, useState } from 'react';
 import Form from '../components/Form';
 import Header from '../components/Header';
 import Monitor from '../components/Monitor';
-import { base64ToUint8Array } from '../utility';
-import pushNotification from '../utility/pushNotification';
+import {
+  createCentersId,
+  getDistrictName,
+  intervalList,
+  resultHoldsAnyKeyword
+} from '../utility';
 
 export default function Home() {
   const [district, setDistrict] = useState('');
   const [date, setDate] = useState('');
-  const [email, setEmail] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [isPincode, setIsPincode] = useState(false);
+  const [interval, setTimeInterval] = useState(10);
   const [err, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [minitor, setMonitor] = useState(false);
-  const [subscription, setSubscription] = useState(null);
+  const [monitor, setMonitor] = useState(false);
+  const [reservedCenterIds, setReservedCenterIds] = useState('');
+  const [registration, setRegistration] = useState(null);
+  const [hasPermission, setPermission] = useState(false);
 
   const handleCancel = () => {
     setDistrict('');
     setDate('');
+    setKeywords('');
+    setPincode('');
+    setIsPincode(false);
     setMonitor(false);
+    setTimeInterval(10);
+    setReservedCenterIds('');
   };
+
+  const notifyUser = async (centers) => {
+    if (!hasPermission || !registration) {
+      alert('Push notifications facility is not available.')
+      return;
+    }
+
+    const newCenterIds = createCentersId(centers);
+
+    if (newCenterIds === reservedCenterIds) {
+      return;
+    }
+
+    setReservedCenterIds(newCenterIds);
+
+    if (keywords && !resultHoldsAnyKeyword(keywords, centers)) {
+      return;
+    }
+
+    registration.showNotification(
+      `Vaccine Available In ${getDistrictName(district)}`,
+      {
+        body: 'New vaccine centers are available in your district. Grab your vaccine ASAP!!!',
+        icon: '/icons/icon-192x192.png',
+        vibrate: [200, 100, 200, 100, 200, 100, 200],
+      }
+    );
+  }
 
   useEffect(() => {
     // Let's check if the browser supports notifications
@@ -27,10 +69,21 @@ export default function Home() {
       alert("This browser does not support desktop notification");
     }
 
+    else if (typeof window === 'undefined' || !'serviceWorker' in navigator) {
+      alert("This browser does not support desktop notification");
+    }
+
     // Let's check whether notification permissions have already been granted
     else if (Notification.permission === "granted") {
-      // If it's okay let's create a notification
-      new Notification("If you can see me, then you are good to go!!!");
+      setPermission(true);
+      navigator.serviceWorker.ready.then(registration => {
+        setRegistration(registration);
+        registration.showNotification('If you can see me, then you are good to go!!!', {
+          body: 'Buzz! Buzz!',
+          icon: '/icons/icon-192x192.png',
+          vibrate: [200, 100, 200, 100, 200, 100, 200],
+        });
+      });
     }
 
     // Otherwise, we need to ask the user for permission
@@ -38,68 +91,58 @@ export default function Home() {
       Notification.requestPermission().then(function (permission) {
         // If the user accepts, let's create a notification
         if (permission === "granted") {
-          new Notification("If you can see me, then you are good to go!!!");
+          setPermission(true);
+          navigator.serviceWorker.ready.then(function(registration) {
+            setRegistration(registration);
+            registration.showNotification('If you can see me, then you are good to go!!!', {
+              body: 'Buzz! Buzz!',
+              icon: '/icons/icon-192x192.png',
+              vibrate: [200, 100, 200, 100, 200, 100, 200],
+            });
+          });
         }
       });
+    } else {
+      alert('You really want to turn ON your notifications to use this app')
     }
   }, []);
-
-  useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      'serviceWorker' in navigator &&
-      window.workbox !== undefined
-    ) {
-      // run only in browser
-      navigator.serviceWorker.ready.then(reg => {
-        reg.pushManager.getSubscription()
-        .then(sub => {
-          if (!sub) {
-            return reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: base64ToUint8Array(
-                process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY
-              )
-            })
-          }
-          return sub;
-        })
-        .then(sub => {
-          if (sub) {
-            setSubscription(sub);
-          }
-        })
-      })
-    }
-  }, []);
-
-  const notifyUser = async () => {
-    if (subscription == null) {
-      console.error('web push not subscribed');
-      return;
-    }
-
-    await pushNotification(subscription, email, district);
-  }
 
   return (
     <>
       <Header />
       <div className="flex flex-col items-center justify-center min-w-full min-h-screen">
         <div
-          style={{ height: '26rem' }}
-          className="relative mx-6 border border-yellow-900 rounded-md shadow-md md:w-64"
+          style={{ height: '35rem' }}
+          className="relative mx-6 border border-yellow-900 rounded-md shadow-md md:w-80"
         >
           <div className="flex flex-col justify-center mx-4 my-2 space-y-4">
-            <h1 className="inline-block text-xl text-center text-yellow-900 uppercase">
-              Lookout Vaccine
-            </h1>
-            {minitor ? (
+            <div className="flex items-center justify-between w-full pb-3 border-b border-gray-400">
+              <h1 className="flex-grow inline-block text-lg text-center text-yellow-900 uppercase">
+                Lookout Vaccine
+              </h1>
+              {!monitor && (
+                <select
+                  title="Duration in which the vaccine availability is enquired"
+                  className="form-select"
+                  value={interval}
+                  onChange={event => setTimeInterval(Number(event.target.value))}
+                >
+                  {intervalList().map(ivl => (
+                    <option key={ivl.value} value={ivl.value}>
+                      {ivl.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {monitor ? (
               <Monitor
                 cancel={handleCancel}
                 district={district}
                 date={date}
-                email={email}
+                pincode={pincode}
+                interval={interval}
+                isPincode={isPincode}
                 notifyUser={notifyUser}
               />
             ) : (
@@ -107,14 +150,18 @@ export default function Home() {
                 district={district}
                 date={date}
                 err={err}
-                email={email}
+                keywords={keywords}
+                pincode={pincode}
+                isPincode={isPincode}
                 isLoading={isLoading}
                 actions={{
                   setDate,
                   setDistrict,
                   setMonitor,
                   setError,
-                  setEmail,
+                  setKeywords,
+                  setPincode,
+                  setIsPincode,
                   setIsLoading,
                   notifyUser,
                 }}
