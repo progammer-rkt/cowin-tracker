@@ -2,6 +2,10 @@ import moment from 'moment';
 
 import districtList from '../data/districtList.json';
 
+export const START_TRACKING = 'start_tracking';
+export const STOP_TRACKING = 'stop_tracking';
+export const TRACKED_RESULT = 'tracked_result';
+
 export function formatDate(date) {
   return moment(date, 'YYYYY-MM-DD').format('DD-MM-YYYY')
 }
@@ -45,4 +49,9 @@ export function intervalList() {
     { label: '45min', value: 45, interval: 2700000 },
     { label: '1hr', value: 100, interval: 3600000 },
   ];
+}
+
+export function getInterval(intervalValue) {
+  const intItem = (intervalList().find(i => i.value === intervalValue) || {});
+  return intItem.interval || 600000;
 }

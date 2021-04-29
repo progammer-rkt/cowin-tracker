@@ -41,6 +41,10 @@ export default function Home() {
       return;
     }
 
+    if (!centers.length) {
+      return;
+    }
+
     const newCenterIds = createCentersId(centers);
 
     if (newCenterIds === reservedCenterIds) {

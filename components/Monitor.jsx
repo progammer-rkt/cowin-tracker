@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import fetchCenters from '../utility/fetchCenters';
-import { formatDate, getDistrictName, intervalList } from '../utility';
+import {
+  formatDate,
+  getDistrictName,
+  START_TRACKING,
+  STOP_TRACKING,
+  TRACKED_RESULT
+} from '../utility';
 
 function Monitor({
   cancel,
@@ -12,24 +17,36 @@ function Monitor({
   interval,
   notifyUser
 }) {
+  const [webWorker, setWebWorker] = useState(null);
 
   useEffect(() => {
-    if (date && ((isPincode && pincode) || (!isPincode && district))) {
-      const intItem = (intervalList().find(i => i.value === interval) || {});
-      const intervalInMilliSec = intItem.interval || 600000;
-      const timer = setInterval(() => {
-        (async () => {
-          const response = await fetchCenters(district, date, pincode, isPincode);
-          const { centers = [] } = response || {};
-          notifyUser(centers);
-        })();
-       }, intervalInMilliSec);
+    const newWebWorker = new Worker('/worker.js', { type: 'module' });
+    setWebWorker(newWebWorker);
+  }, []);
 
-      return () => clearInterval(timer);
+  useEffect(() => {
+    if (webWorker) {
+      webWorker.onmessage = event => {
+        const { data: { type, payload } } = event;
+
+        if (type === TRACKED_RESULT) {
+          notifyUser(payload);
+        }
+      };
+
+      webWorker.postMessage({
+        type: START_TRACKING,
+        payload: { date, district, pincode, isPincode, interval }
+      });
+
+      return () => {
+        webWorker.postMessage({ type: STOP_TRACKING });
+        webWorker.terminate();
+      };
     }
 
     return () => {};
-  }, [district, date, pincode, isPincode, notifyUser, interval]);
+  }, [webWorker, date, district, pincode, isPincode, interval, notifyUser]);
 
   return (
     <div className="flex flex-col justify-center">
