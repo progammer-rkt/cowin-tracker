@@ -1,0 +1,9 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.example.cowinapp",
+    "sha256_cert_fingerprints":
+    ["E2:B6:60:BC:13:31:4A:75:29:37:A7:8B:FB:63:81:E7:66:87:29:88:0E:53:7C:6A:68:33:C8:80:7D:1C:BC:76"]
+  }
+}]
